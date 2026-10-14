@@ -45,13 +45,24 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
 
+  const accountRef = React.useRef<string | null>(null);
+  const providerRef = React.useRef<BrowserProvider | null>(null);
+
+  useEffect(() => {
+    accountRef.current = account;
+  }, [account]);
+
+  useEffect(() => {
+    providerRef.current = provider;
+  }, [provider]);
+
   const fetchBalance = useCallback(async (userAddress: string, activeProvider: BrowserProvider) => {
     try {
       const bal = await activeProvider.getBalance(userAddress);
       const formatted = parseFloat(formatEther(bal)).toFixed(4);
       setBalance(formatted);
     } catch (e) {
-      console.error('Failed to fetch BOT balance:', e);
+      console.warn('Failed to fetch BOT balance:', e);
     }
   }, []);
 
@@ -61,70 +72,80 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [account, provider, fetchBalance]);
 
-  // Handle chain changed
-  const handleChainChanged = useCallback((hexChainId: string) => {
-    const numericChainId = parseInt(hexChainId, 16);
-    setChainId(numericChainId);
-    if (typeof window !== 'undefined' && window.ethereum) {
-      const newProvider = new BrowserProvider(window.ethereum);
-      setProvider(newProvider);
-      if (account) {
-        fetchBalance(account, newProvider);
-      }
-    }
-  }, [account, fetchBalance]);
-
-  // Handle accounts changed
-  const handleAccountsChanged = useCallback((accounts: string[]) => {
-    if (accounts.length === 0) {
-      setAccount(null);
-      setBalance('0');
-    } else {
-      setAccount(accounts[0]);
-      if (provider) {
-        fetchBalance(accounts[0], provider);
-      }
-    }
-  }, [provider, fetchBalance]);
-
-  // Initialize on mount
+  // Initialize wallet state and attach listeners strictly once on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      const browserProvider = new BrowserProvider(window.ethereum);
-      setProvider(browserProvider);
+    if (typeof window === 'undefined' || !window.ethereum) {
+      return;
+    }
 
-      window.ethereum
-        .request({ method: 'eth_accounts' })
-        .then((accounts: string[]) => {
-          if (accounts && accounts.length > 0) {
-            setAccount(accounts[0]);
-            browserProvider.getNetwork().then((net) => {
-              const numericId = Number(net.chainId);
-              setChainId(numericId);
-              fetchBalance(accounts[0], browserProvider);
-            });
-          }
-        })
-        .catch(console.error);
+    const browserProvider = new BrowserProvider(window.ethereum);
+    setProvider(browserProvider);
+    providerRef.current = browserProvider;
 
-      window.ethereum
-        .request({ method: 'eth_chainId' })
-        .then((hexChain: string) => {
-          setChainId(parseInt(hexChain, 16));
-        })
-        .catch(console.error);
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (!accounts || accounts.length === 0) {
+        setAccount(null);
+        setBalance('0');
+      } else {
+        const primary = accounts[0];
+        setAccount(primary);
+        if (typeof window !== 'undefined' && window.ethereum) {
+          const bp = new BrowserProvider(window.ethereum);
+          setProvider(bp);
+          fetchBalance(primary, bp);
+        }
+      }
+    };
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
+    const handleChainChanged = (hexChainId: string) => {
+      const numericChainId = parseInt(hexChainId, 16);
+      setChainId(numericChainId);
+      if (typeof window !== 'undefined' && window.ethereum) {
+        const bp = new BrowserProvider(window.ethereum);
+        setProvider(bp);
+        if (accountRef.current) {
+          fetchBalance(accountRef.current, bp);
+        }
+      }
+    };
 
-      return () => {
+    // Initial check for connected accounts and network
+    window.ethereum
+      .request({ method: 'eth_accounts' })
+      .then((accounts: string[]) => {
+        if (accounts && accounts.length > 0) {
+          setAccount(accounts[0]);
+          browserProvider.getNetwork().then((net) => {
+            const numericId = Number(net.chainId);
+            setChainId(numericId);
+            fetchBalance(accounts[0], browserProvider);
+          }).catch(console.warn);
+        }
+      })
+      .catch(console.warn);
+
+    window.ethereum
+      .request({ method: 'eth_chainId' })
+      .then((hexChain: string) => {
+        setChainId(parseInt(hexChain, 16));
+      })
+      .catch(console.warn);
+
+    // Register event listeners
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+    window.ethereum.on('chainChanged', handleChainChanged);
+
+    return () => {
+      try {
         if (window.ethereum?.removeListener) {
           window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
           window.ethereum.removeListener('chainChanged', handleChainChanged);
         }
-      };
-    }
-  }, [handleAccountsChanged, handleChainChanged, fetchBalance]);
+      } catch (err) {
+        console.warn('Error removing Ethereum event listeners:', err);
+      }
+    };
+  }, [fetchBalance]);
 
   const connect = async () => {
     if (typeof window === 'undefined' || !window.ethereum) {

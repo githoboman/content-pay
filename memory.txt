@@ -120,6 +120,11 @@ Context & Libraries:
 - `types/ethereum.d.ts`:
   Window.ethereum global type declarations.
 
+Turbopack & Runtime Optimizations:
+- `next.config.ts`: Configured `turbopack.root: path.resolve(__dirname)` to resolve dual lockfile warning.
+- `WalletContext.tsx`: Uses React refs for account and provider states, mounting EIP-1193 listeners (`accountsChanged`, `chainChanged`) strictly once on mount to eliminate EventEmitter memory leak warnings (`MaxListenersExceededWarning`) from MetaMask inpage content scripts.
+- `.env.local`: Configured with live Bohr Testnet contract addresses and RPC endpoints.
+
 
 6. COMMAND REFERENCE CHEATSHEET
 --------------------------------------------------------------------------------
