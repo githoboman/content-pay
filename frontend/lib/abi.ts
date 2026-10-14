@@ -1,0 +1,42 @@
+export const CONTENT_REGISTRY_ABI = [
+  "function articleCounter() view returns (uint256)",
+  "function totalPlatformPurchases() view returns (uint256)",
+  "function totalPlatformRevenueUsdCents() view returns (uint256)",
+  "function botUsdPriceCents() view returns (uint256)",
+  "function platformFeeBps() view returns (uint256)",
+  "function platformTreasury() view returns (address)",
+  "function articles(uint256) view returns (uint256 id, address author, string title, string contentUri, uint256 priceUsdCents, string category, bool active, uint256 publishedAt, uint256 publishedBlock)",
+  "function getArticle(uint256 articleId) view returns (tuple(uint256 id, address author, string title, string contentUri, uint256 priceUsdCents, string category, bool active, uint256 publishedAt, uint256 publishedBlock))",
+  "function getAllArticles() view returns (tuple(uint256 id, address author, string title, string contentUri, uint256 priceUsdCents, string category, bool active, uint256 publishedAt, uint256 publishedBlock)[])",
+  "function hasPurchased(uint256 articleId, address reader) view returns (bool)",
+  "function getPurchasedArticles(address reader) view returns (uint256[])",
+  "function getArticlesByAuthor(address author) view returns (uint256[])",
+  "function calculateBotAmount(uint256 priceUsdCents) view returns (uint256)",
+  "function getPlatformStats() view returns (uint256 totalArticles, uint256 totalPurchases, uint256 totalRevenueUsdCents)",
+  "function writerStats(address) view returns (uint256 totalArticles, uint256 totalEarningsUsdCents, uint256 totalPurchases)",
+  "function readerStats(address) view returns (uint256 totalPurchases, uint256 totalSpentUsdCents)",
+  "function supportedTokens(address) view returns (bool)",
+  "function tokenDecimals(address) view returns (uint8)",
+  "function publishArticle(string title, string contentUri, uint256 priceUsdCents, string category) returns (uint256)",
+  "function updatePrice(uint256 articleId, uint256 newPriceUsdCents)",
+  "function setActive(uint256 articleId, bool active)",
+  "function purchaseWithBOT(uint256 articleId) payable",
+  "function purchaseWithToken(uint256 articleId, address token)",
+  "event ArticlePublished(uint256 indexed articleId, address indexed author, string title, string contentUri, uint256 priceUsdCents, string category, uint256 timestamp)",
+  "event ArticlePurchased(uint256 indexed articleId, address indexed reader, address indexed author, address token, uint256 amountPaid, uint256 usdPriceCents, uint256 platformFee, uint256 writerEarnings, uint256 timestamp)",
+  "event ArticlePriceUpdated(uint256 indexed articleId, uint256 oldPrice, uint256 newPrice)",
+  "event ArticleStatusChanged(uint256 indexed articleId, bool active)"
+] as const;
+
+export const ERC20_ABI = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function transfer(address recipient, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
+  "function mintFaucet(address recipient, uint256 amount)"
+] as const;

@@ -1,0 +1,145 @@
+================================================================================
+CONTENTPAY — PROJECT MEMORY & ARCHITECTURE LOG
+================================================================================
+Last Updated: 2026-10-14
+Migration Target: BOT Chain (EVM Layer 1 for DePIN and AI Native Applications)
+Reference Docs:   https://dev-docs.botchain.ai/docs/intro
+Status:           Migration Complete & Build Verified (10/10 Tests Passed)
+================================================================================
+
+1. PROJECT SUMMARY & CORE PURPOSE
+--------------------------------------------------------------------------------
+ContentPay is a decentralized micropayment and content registry platform enabling:
+- Human creators and autonomous AI agents (Agent OS / ERC-8004) to publish articles.
+- Readers to unlock locked content with sub-second finality (~0.75s block time).
+- Ultra-low transaction fees (~$0.06), making micropayments (< $1.00) viable.
+- Automatic revenue distribution: 97% directly to author wallet, 3% to platform treasury.
+- Multi-token support: Native BOT / tBOT and ERC-20 tokens (e.g. USDC, USDT).
+
+
+2. MIGRATION FROM STACKS TO BOT CHAIN
+--------------------------------------------------------------------------------
+Legacy Architecture:
+- Stacks Blockchain, Clarity contracts (`content-registry.clar`, traits, `mock-*.clar`).
+- Bitcoin settlement with ~5s to ~10m block times.
+- `@stacks/connect`, `@stacks/transactions`, Leather / Xverse wallets.
+
+BOT Chain Architecture (Current):
+- EVM-compatible Layer 1, Solidity `^0.8.20`.
+- Fast consensus: ~0.75-second block finality.
+- Native compatibility with MetaMask, Rabby, Coinbase Wallet, EIP-1193.
+- `ethers.js` v6 provider and signer.
+- Full compatibility with BOT Chain Agent OS and ERC-8004 verifiable agent identities.
+
+
+3. SMART CONTRACTS SPECIFICATION (`contracts/`)
+--------------------------------------------------------------------------------
+A. `ContentRegistry.sol`:
+   - `publishArticle(title, contentUri, priceUsdCents, category)`:
+     Registers article on-chain, emits `ArticlePublished`.
+   - `updatePrice(articleId, newPriceUsdCents)`: Author only.
+   - `setActive(articleId, active)`: Author only.
+   - `purchaseWithBOT(articleId) payable`:
+     Calculates required BOT amount via `calculateBotAmount(priceUsdCents)`.
+     Transfers 97% to author, 3% to platform treasury.
+     Refunds any excess `msg.value` automatically.
+     Emits `ArticlePurchased`.
+   - `purchaseWithToken(articleId, token)`:
+     ERC-20 payment (e.g., MockUSDC with 6 decimals).
+     Transfers tokens from reader: 97% to author, 3% to platform treasury.
+   - Read & View Functions:
+     - `getArticle(articleId)` -> Article struct
+     - `hasPurchased(articleId, reader)` -> bool
+     - `getPurchasedArticles(reader)` -> uint256[] array of all unlocked IDs
+     - `getArticlesByAuthor(author)` -> uint256[]
+     - `getPlatformStats()` -> totalArticles, totalPurchases, totalRevenueUsdCents
+     - `calculateBotAmount(priceUsdCents)` -> uint256 in wei
+
+B. `MockUSDC.sol`:
+   - 6-decimal ERC-20 token with `mintFaucet(recipient, amount)` for Bohr Testnet.
+
+
+4. TEST SUITE & VALIDATION (`tests/solidity/`)
+--------------------------------------------------------------------------------
+Suite: `tests/solidity/ContentRegistry.test.cjs`
+All 10 unit tests pass (10/10):
+- [x] Allows author to publish article
+- [x] Allows author to update price and active status
+- [x] Rejects non-author from updating price
+- [x] Calculates correct required BOT amount
+- [x] Executes purchase with BOT and splits 3% fee (97% to author)
+- [x] Refunds excess BOT sent
+- [x] Prevents duplicate purchases
+- [x] Executes purchase with ERC-20 USDC and splits 3% fee
+- [x] Author automatically has access
+- [x] Returns correct platform metrics and analytics
+
+
+4.1. LIVE BOHR TESTNET DEPLOYMENT (CHAIN ID: 968)
+--------------------------------------------------------------------------------
+- Deployer Address:  0x8800e279B7cea4AE8C45594467b5DE524528413C
+- Deployer Balance:  9.91307138 tBOT (Verified on-chain via Bohr RPC)
+- ContentRegistry:   0x27af961becF8599579A93A7ED1199218B27f3f12
+- MockUSDC:          0xa32a17e2d4E9F7C7d502b07e59C52a603d3036D6
+- Platform Treasury: 0x8800e279B7cea4AE8C45594467b5DE524528413C (3% protocol fee)
+- Genesis Articles:  2 articles minted on-chain during deployment
+- Block Explorer:    https://scan.bohr.life/address/0x27af961becF8599579A93A7ED1199218B27f3f12
+- Config Sync:       Stored in frontend/lib/deployed-contracts.json & frontend/lib/botchain.ts
+
+
+5. FRONTEND ARCHITECTURE (`frontend/`)
+--------------------------------------------------------------------------------
+Technology: Next.js 16 (Turbopack, App Router), React 19, TailwindCSS, Ethers.js v6
+
+Pages & Routes:
+- `/` (`app/page.tsx`):
+  Hero highlighting BOT Chain features (~0.75s blocks, ~$0.06 fees, Agent OS),
+  key metrics, and trending feed preview.
+- `/browse` (`app/browse/page.tsx`):
+  Marketplace to explore articles by category with search and instant unlock buttons.
+- `/publish` (`app/publish/page.tsx`):
+  Creator studio with AI sample autofill and on-chain publishing.
+- `/article/[id]` (`app/article/[id]/page.tsx`):
+  Article details, dual payment selector (tBOT / USDC), instant unlock, and full content.
+- `/my-library` (`app/my-library/page.tsx`):
+  Displays all articles unlocked by the connected EVM account.
+- `/test-publish` (`app/test-publish/page.tsx`):
+  1-Click publishing testbench for Bohr Testnet.
+- `/test-buy` (`app/test-buy/page.tsx`):
+  1-Click purchasing testbench for Bohr Testnet.
+
+Context & Libraries:
+- `context/WalletContext.tsx`:
+  Web3 context managing accounts, chain ID, live tBOT balance, and network switching.
+- `lib/botchain.ts`:
+  Bohr Testnet (968) and BOT Mainnet (677) parameters, RPC URLs, switchOrAddNetwork helper.
+- `lib/abi.ts`:
+  Human-readable ABIs for ContentRegistry and ERC20.
+- `lib/config.ts`:
+  Active network configuration export.
+- `types/ethereum.d.ts`:
+  Window.ethereum global type declarations.
+
+
+6. COMMAND REFERENCE CHEATSHEET
+--------------------------------------------------------------------------------
+# 1. Compile Solidity smart contracts:
+npx hardhat compile --config hardhat.config.cjs
+
+# 2. Run unit tests (10 passing):
+npx hardhat test tests/solidity/ContentRegistry.test.cjs --config hardhat.config.cjs
+
+# 3. Check deployer wallet balance on Bohr Testnet:
+node ../scripts/check-botchain-balance.cjs   (run from frontend/)
+
+# 4. Deploy smart contracts to Bohr Testnet:
+npx hardhat run scripts/deploy-botchain.cjs --network botTestnet --config hardhat.config.cjs
+
+# 5. Run the frontend local development server:
+cd frontend
+npm run dev
+
+# 6. Run production build check:
+cd frontend
+npm run build
+================================================================================

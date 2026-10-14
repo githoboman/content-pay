@@ -1,0 +1,8 @@
+{
+  "network": "botTestnet",
+  "chainId": "968",
+  "contentRegistry": "0x27af961becF8599579A93A7ED1199218B27f3f12",
+  "mockUsdc": "0xa32a17e2d4E9F7C7d502b07e59C52a603d3036D6",
+  "treasury": "0x8800e279B7cea4AE8C45594467b5DE524528413C",
+  "deployedAt": "2026-10-14T12:07:50.052Z"
+}
